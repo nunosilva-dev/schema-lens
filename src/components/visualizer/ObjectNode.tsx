@@ -1,4 +1,4 @@
-import {memo} from "react"
+import {memo, useEffect, useRef, useState} from "react"
 import {Handle, type Node, type NodeProps, Position} from "@xyflow/react"
 import type {ObjectNodeData} from "@/lib/graphUtils"
 
@@ -8,18 +8,27 @@ import {ScrollArea} from "@/components/ui/scroll-area"
 
 /**
  * Custom Node Component for representing JSON Objects/Arrays.
- *
- * Displays:
- * - Node Label (Key)
- * - List of primitive values (Strings, Numbers, Booleans)
- * - Visual indicators for Arrays
- * - Handles for connecting to parent/child nodes
  */
 const ObjectNode = memo(({data}: NodeProps<Node<ObjectNodeData>>) => {
     const selectedNodePath = useSchemaStore((s) => s.selectedNodePath)
     const isSelected = selectedNodePath === data.path
 
-    const isScrollable = data.primitives.length > 6
+    const scrollRef = useRef<HTMLDivElement>(null)
+    const [hasOverflow, setHasOverflow] = useState(false)
+
+    useEffect(() => {
+        const checkOverflow = () => {
+            const viewport = scrollRef.current?.querySelector('[data-radix-scroll-area-viewport]')
+            if (viewport) {
+                setHasOverflow(viewport.scrollHeight > viewport.clientHeight)
+            }
+        }
+
+        checkOverflow()
+        // Re-check on window resize or data changes
+        window.addEventListener('resize', checkOverflow)
+        return () => window.removeEventListener('resize', checkOverflow)
+    }, [data.primitives])
 
     return (
         <div
@@ -36,7 +45,10 @@ const ObjectNode = memo(({data}: NodeProps<Node<ObjectNodeData>>) => {
                 {data.isArray && <Badge variant="secondary" className="text-[10px] h-5">Array</Badge>}
             </div>
 
-            <ScrollArea className={`flex max-h-32 flex-col ${isScrollable ? "nowheel nodrag custom-scrollbar" : ""}`}>
+            <ScrollArea
+                ref={scrollRef}
+                className={`flex max-h-32 flex-col ${hasOverflow ? "nowheel nodrag custom-scrollbar" : ""}`}
+            >
                 <div className="p-3 space-y-1.5">
                     {data.primitives.length === 0 && (
                         <span className="text-xs text-muted-foreground italic">No properties</span>

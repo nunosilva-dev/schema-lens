@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useMemo, useState} from "react"
+import {useCallback, useEffect, useMemo, useRef, useState} from "react"
 import {
     Background,
     Controls,
@@ -48,6 +48,20 @@ export function JsonGraph() {
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
     const [isCopied, setIsCopied] = useState(false)
 
+    const breadcrumbRef = useRef<HTMLDivElement>(null)
+    const [hasPathOverflow, setHasPathOverflow] = useState(false)
+
+    useEffect(() => {
+        const checkOverflow = () => {
+            if (breadcrumbRef.current) {
+                setHasPathOverflow(breadcrumbRef.current.scrollWidth > breadcrumbRef.current.clientWidth)
+            }
+        }
+        checkOverflow()
+        window.addEventListener('resize', checkOverflow)
+        return () => window.removeEventListener('resize', checkOverflow)
+    }, [selectedNodePath])
+
     useEffect(() => {
         if (!parsedData) {
             setNodes([])
@@ -91,7 +105,7 @@ export function JsonGraph() {
     const pathSegments = selectedNodePath ? selectedNodePath.split('.').flatMap(p => p.split('[').map(s => s.replace(']', ''))) : []
 
     return (
-        <div className="relative h-full w-full">
+        <div className="relative h-full w-full overflow-hidden">
             <ReactFlow
                 nodes={nodes}
                 edges={edges}
@@ -117,12 +131,18 @@ export function JsonGraph() {
 
             {/* Path Finder UI */}
             <div
-                className="absolute bottom-4 left-4 right-4 z-10 flex items-center justify-between rounded-lg border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60 gap-4">
+                onWheel={(e) => e.stopPropagation()}
+                onMouseDown={(e) => e.stopPropagation()}
+                className="absolute bottom-4 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-5xl z-10 flex items-center justify-between rounded-lg border bg-background/95 p-3 shadow-lg backdrop-blur supports-[backdrop-filter]:bg-background/60 gap-4 nodrag"
+            >
                 <div className="flex items-center overflow-hidden min-w-0 flex-1">
                     <span
                         className="mr-2 text-xs font-medium text-muted-foreground whitespace-nowrap shrink-0">Path:</span>
                     {selectedNodePath ? (
-                        <div className="overflow-x-auto custom-scrollbar py-1">
+                        <div
+                            ref={breadcrumbRef}
+                            className={`overflow-x-auto custom-scrollbar py-1 ${hasPathOverflow ? "nowheel" : ""}`}
+                        >
                             <Breadcrumb>
                                 <BreadcrumbList className="flex-nowrap w-max">
                                     {pathSegments.map((segment, i) => (
