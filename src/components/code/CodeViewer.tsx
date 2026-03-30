@@ -57,9 +57,23 @@ async function generateSchema(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         lang: langName as any,
         rendererOptions,
+        inferMaps: false,
+        inferEnums: false,
+        inferDateTimes: false,
+        allPropertiesOptional: true,
+        fixedTopLevels: true,
     })
 
     let output = result.lines.join("\n")
+
+    // Remove unprofessional adjectives often added by quicktype (Purple, Fluffy, etc.)
+    const adjectives = [
+        "Purple", "Fluffy", "Tentacled", "Sticky", "Indigo", "Indecent", "Hilarious",
+        "Ambitious", "Cunning", "Magenta", "Frisky", "Mischievous", "Braggadocious",
+        "Sharp", "Silly", "Knobby", "Vexed", "Goofy", "Buff", "Quick", "Lazy"
+    ]
+    const adjectiveRegex = new RegExp(`\\b(${adjectives.join("|")})([A-Z])`, "g")
+    output = output.replace(adjectiveRegex, "$2")
 
     // DATA CLEANUP: Java sometimes generates a Converter class even with just-types.
     if (targetLang === "java") {
